@@ -1,0 +1,248 @@
+(* On écrit les polynômes sous forme de vecteurs : [|1,0,1,0,0,1|] = x^5 + 
+x^2 + 1 *)
+
+
+
+let rec puiss a b =
+ if b=0 then 1
+ else a*(puiss a (b-1));;
+
+(* calcule a^b
+l'algorithme est peu efficace ;
+on peut implémenter l'expo rapide à la place, mais bon... *)
+
+
+
+let p = 2 ;;
+
+(* le cardinal du corps de base : Z/pZ *)
+
+
+
+let rec sum a k b =
+ for i = 0 to (vect_length a - 1) do
+  b.(k+i) <- (b.(k+i) + a.(i)) mod p
+ done;;
+
+(* copie le vecteur a en k ième position dans b
+cela reviens à faire b = b + X^k*a *)
+ 
+
+
+let rec scal a k =
+ let b = (copy_vect a) in
+ for i = 0 to (vect_length b - 1) do
+  b.(i) <- (k * b.(i)) mod p
+ done;
+ b;;
+
+(* multiplication de a par le scalaire k *)
+
+
+
+let poly = [|1;0;1;0;0;1|] ;;
+let deg = vect_length poly - 1 ;;
+let resid = (scal (sub_vect poly 0 deg) (-1)) ;;
+
+(* X^5+X^2+1 = 0 <=> X^5 = -X^2-1 *)
+
+
+
+let mult a b = 
+ let c = make_vect ((vect_length a) + (vect_length b)) 0 in
+ for i = 0 to (vect_length c - 1) do
+  for j = (max (1-(vect_length b)+i) 0) to (min (vect_length a-1) i) do
+   c.(i) <- (c.(i) + a.(j) * b.(i-j)) mod p
+  done;
+ done;
+ c;;
+
+(* calcule le polynôme produit (de degré : deg a + deg b) de a et de b *)
+
+
+
+let mult_F a b =
+ let c = (mult a b) in
+ for i = (vect_length c - 1) downto deg do
+  sum (scal resid (c.(i))) (i-deg) c
+ done;
+ sub_vect c 0 deg;;
+
+(* multiplication de polynôme dans F_p^deg :
+prends le produit donné par "mult", et le réduit en utilisant resid *)
+
+
+
+mult_F [|0;0;1|] [|0;0;0;1|];;
+
+
+
+let l = (puiss p deg - 2);;
+
+
+
+let equal_F a b =
+ let r = ref true in
+ for i = 0 to (deg-1) do
+  if ((b.(i) - a.(i)) mod p <> 0) then r := false
+ done;
+ (!r);;
+
+(* savoir si deux polynômes sont égaux *)
+
+
+
+let polytech =
+ let r = make_vect deg 0 in
+ r.(1) <- 1;
+ r;;
+
+(* l'élément X représenté en vecteur *)
+
+
+
+let ord_F =
+ let r = make_vect l polytech in
+ for i = 2 to l do
+  r.(i-1) <- (mult_F polytech (r.(i-2)))
+ done;
+ r;;
+
+(* "ord_F.(i)" est l'élément d'ordre i dans F_p^deg *)
+
+
+
+let unit =
+ let r = make_vect deg 0 in
+ r.(0) <- 1;
+ r;;
+
+(* l'élément 1 représenté en vecteur *)
+
+
+
+let rec sum_F a b =
+ let r = (copy_vect a) in
+ for i = 0 to (deg-1) do
+  r.(i) <- (b.(i) + a.(i)) mod p
+ done;
+ r;;
+
+(* fait la somme de deux vecteurs et la réduit modulo p *)
+
+
+
+exception ord of int;;
+
+
+
+let Zech =
+ let r = make_vect l (-1) in
+ let find y =
+  try
+   for i = 1 to l do
+    if (equal_F y (ord_F.(i-1))) then raise (ord i)
+   done;
+   0
+  with
+   | ord i -> i in
+ for j = 1 to l do
+  r.(j-1) <- (find (sum_F unit (scal (ord_F.(j-1)) (-1)))) - 1
+ done;
+ r;;
+
+(* i -> Zech.(i) est la permutation associée au log de Zech *)
+
+
+
+let Mat p =
+ let r = make_matrix (vect_length p) (vect_length p) "-" in
+ for i = 0 to (vect_length p - 1) do
+  r.(p.(i)).(i) <- "X"
+ done;
+ r;;
+
+let Aff m =
+ print_newline();
+ for i = 0 to (vect_length m - 1) do
+  for j= 0 to (vect_length m.(0) - 1) do
+   print_string m.(i).(j);
+   print_string " "
+  done;
+  print_newline();
+ done;;
+
+
+***************************************************************************
+
+
+puiss : int -> int -> int = <fun>
+#p : int = 2
+#sum : int vect -> int -> int vect -> unit = <fun>
+#scal : int vect -> int -> int vect = <fun>
+#poly : int vect = [|1; 0; 1; 0; 0; 1|]
+#deg : int = 5
+#resid : int vect = [|-1; 0; -1; 0; 0|]
+#mult : int vect -> int vect -> int vect = <fun>
+#mult_F : int vect -> int vect -> int vect = <fun>
+#- : int vect = [|-1; 0; -1; 0; 0|]
+#l : int = 30
+#equal_F : int vect -> int vect -> bool = <fun>
+#polytech : int vect = [|0; 1; 0; 0; 0|]
+#ord_F : int vect vect =
+ [|[|0; 1; 0; 0; 0|]; [|0; 0; 1; 0; 0|]; [|0; 0; 0; 1; 0|];
+   [|0; 0; 0; 0; 1|]; [|-1; 0; -1; 0; 0|]; [|0; -1; 0; -1; 0|];
+   [|0; 0; -1; 0; -1|]; [|1; 0; 1; -1; 0|]; [|0; 1; 0; 1; -1|];
+   [|1; 0; 0; 0; 1|]; [|-1; 1; -1; 0; 0|]; [|0; -1; 1; -1; 0|];
+   [|0; 0; -1; 1; -1|]; [|1; 0; 1; -1; 1|]; [|-1; 1; -1; 1; -1|];
+   [|1; -1; 0; -1; 1|]; [|-1; 1; 0; 0; -1|]; [|1; -1; 0; 0; 0|];
+   [|0; 1; -1; 0; 0|]; [|0; 0; 1; -1; 0|]; [|0; 0; 0; 1; -1|];
+   [|1; 0; 1; 0; 1|]; [|-1; 1; -1; 1; 0|]; [|0; -1; 1; -1; 1|];
+   [|-1; 0; 0; 1; -1|]; [|1; -1; 1; 0; 1|]; [|-1; 1; 0; 1; 0|];
+   [|0; -1; 1; 0; 1|]; [|-1; 0; 0; 1; 0|]; [|0; -1; 0; 0; 1|]|]
+#unit : int vect = [|1; 0; 0; 0; 0|]
+#sum_F : int vect -> int vect -> int vect = <fun>
+#Exception ord defined.
+#Zech : int vect =
+ [|17; 4; 28; 9; 1; 26; 21; 19; 15; 3; 18; 22; 13; 12; 23; 8; 29; 0; 10; 7;
+   24; 6; 11; 14; 20; 27; 5; 25; 2; 16|]
+#Mat : int vect -> string vect vect = <fun>
+#Aff : string vect vect -> unit = <fun>
+
+
+***************************************************************************
+
+
+Aff ( Mat Zech );;
+
+- - - - - - - - - - - - - - - - - X - - - - - - - - - - - - 
+- - - - X - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - X - 
+- - - - - - - - - X - - - - - - - - - - - - - - - - - - - - 
+- X - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - X - - - 
+- - - - - - - - - - - - - - - - - - - - - X - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - X - - - - - - - - - - 
+- - - - - - - - - - - - - - - X - - - - - - - - - - - - - - 
+- - - X - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - X - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - X - - - - - - - 
+- - - - - - - - - - - - - X - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - X - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - X - - - - - - 
+- - - - - - - - X - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - X 
+X - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - X - - - - - - - - - - - - - - - - - - - 
+- - - - - - - X - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - X - - - - - 
+- - - - - - X - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - X - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - X - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - X - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - X - - 
+- - - - - X - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - X - - - - 
+- - X - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - X - - - - - - - - - - - - - 
+- : unit = ()
