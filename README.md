@@ -1,5 +1,4 @@
 # Zech-Logarithm
 A random pattern sequencing to get unique radar signature
 
-
-f
+PDF document (in french) is explaining (english version to come)
